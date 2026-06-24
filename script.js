@@ -144,6 +144,7 @@ function renderNewsList() {
         return;
     }
     container.innerHTML = list.map(newsListItemHtml).join('');
+    animateChildren(container);
 }
 
 function renderVideosFull() {
@@ -155,13 +156,43 @@ function renderVideosFull() {
         return;
     }
     container.innerHTML = list.map(videoCardHtml).join('');
+    animateChildren(container);
 }
 
 function renderHome() {
     const news = getNews().slice(0, 6);
     const videos = getVideos().slice(0, 6);
-    document.getElementById('newsGrid').innerHTML = news.map(newsCardHtml).join('') || '<div class="empty">No news yet.</div>';
-    document.getElementById('videoGrid').innerHTML = videos.map(videoCardHtml).join('') || '<div class="empty">No videos yet.</div>';
+    const ng = document.getElementById('newsGrid');
+    const vg = document.getElementById('videoGrid');
+    if (ng) { ng.innerHTML = news.map(newsCardHtml).join('') || '<div class="empty">No news yet.</div>'; animateChildren(ng); }
+    if (vg) { vg.innerHTML = videos.map(videoCardHtml).join('') || '<div class="empty">No videos yet.</div>'; animateChildren(vg); }
+}
+
+function animateChildren(container) {
+    if (!container) return;
+    const kids = container.children;
+    for (let i = 0; i < kids.length; i++) {
+        kids[i].classList.add('fade-in');
+        kids[i].style.transitionDelay = (i * 0.05) + 's';
+    }
+    // Re-observe newly added elements
+    if ('IntersectionObserver' in window) {
+        if (!window.__animObserver) {
+            window.__animObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        window.__animObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+        }
+        for (let i = 0; i < kids.length; i++) {
+            window.__animObserver.observe(kids[i]);
+        }
+    } else {
+        for (let i = 0; i < kids.length; i++) kids[i].classList.add('visible');
+    }
 }
 
 /* ===== Search ===== */
@@ -364,3 +395,33 @@ document.addEventListener('click', e => {
     if (e.target.id === 'articleModal') closeModal();
     if (e.target.id === 'videoModal') closeVideoModal();
 });
+
+/* ===== Scroll Animations (IntersectionObserver) ===== */
+function setupScrollAnimations() {
+    // Add the fade-in class to any element with data-animate
+    const targets = document.querySelectorAll('[data-animate]');
+    if (!targets.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+        targets.forEach(el => el.classList.add('visible'));
+        return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    targets.forEach(el => observer.observe(el));
+}
+
+// Run on DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupScrollAnimations);
+} else {
+    setupScrollAnimations();
+}
